@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "mrfmsim-cli"
+version = "0.0.1"
+description = "Command line interface for magnetic resonance force microscopy experiments"
+authors = ["Peter Sun <hs859@cornell.edu>"]
+maintainers = ["Peter Sun <hs859@cornell.edu>"]
+repository = "https://www.github.edu/Marohn-Group/mrfmsim-cli"
+readme = "README.rst"
+packages = [
+    { include = "mrfmsim_cli/*.py" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+mrfmsim = { git = "https://github.com/marohn-group/mrfmsim", branch="develop" }
+click = ">=8"
+pytest = { version = ">=7.1.1", optional = true }
+pytest-cov = { version = ">=3.0.0", optional = true }
+
+[tool.poetry.scripts]
+mrfmsim = 'mrfmsim_cli.cli:cli'
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dev-dependencies]
+pytest = ">=7.1.1"
+pytest-cov = ">=3.0.0"
+
+[tool.poetry.extras]
+test = ["pytest", "pytest-cov"]
+
+[tool.poetry.plugins."mrfmsim_plugin"]
+Job = "mrfmsim_cli.job"
+
+[tool.pytest.ini_options]
+filterwarnings = []
+
+[tool.coverage.run]
+# pytest coverage
+source_pkgs = [
+    'mrfmsim_cli',
+]
+omit = ['tests/*']
