@@ -89,7 +89,6 @@ def test_cli_no_command_error(expt_file):
     assert "No commands are given." in result.output
 
 
-
 def test_cli_visualize(expt_file):
     """Test the visualize command outputs the correct dot file.
 
@@ -235,7 +234,6 @@ def test_cli_metadata(experiment_mod):
 
     assert result.exit_code == 0
     assert str(experiment_mod) in result.output
-
 
 
 def test_cli_show_plugin():
