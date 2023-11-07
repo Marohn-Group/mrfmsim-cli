@@ -32,7 +32,7 @@ pytest-cov = ">=3.0.0"
 test = ["pytest", "pytest-cov"]
 
 [tool.poetry.plugins."mrfmsim_plugin"]
-Job = "mrfmsim_cli.job"
+job = "mrfmsim_cli.job"
 
 [tool.pytest.ini_options]
 filterwarnings = []
