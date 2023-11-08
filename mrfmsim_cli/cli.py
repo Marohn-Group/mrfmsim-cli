@@ -2,85 +2,94 @@ import click
 from mrfmsim.configuration import MrfmSimLoader
 from mrfmsim_cli.job import Job, job_execution
 from mrfmsim_cli.configuration import TemplateDumper
-from mrfmsim import Experiment, PLUGINS
-import importlib
+from mrfmsim import Experiment, ExperimentCollection, PLUGINS
+import mrfmsim.experiment as experiment_module
 import yaml
-import sys
+from functools import wraps
 
 
-@click.group(invoke_without_command=True)
-@click.pass_context
-@click.option(
-    "--expt-file",
-    type=click.Path(exists=True),
-    default=None,
-    help="Load experiment by file path.",
-)
-@click.option("--expt", type=str, default=None, help="Load experiment by name.")
-def cli(ctx, expt_file, expt):
-    """MRFM simulation tool."""
+def load_experiment(command_func):
+    """Load experiment from file or collection as a common option decorator."""
 
-    if ctx.invoked_subcommand is None:
-        if any([expt_file, expt]):
-            raise click.UsageError("No commands are given.")
-        click.echo(ctx.get_help())
-    else:
-        ctx.ensure_object(dict)
-        if expt_file and expt:
-            raise click.BadOptionUsage(
-                "expt-file", "cannot use both 'expt-file' and 'expt' options"
-            )
-        elif expt_file:
-            with open(expt_file, "r") as f:
-                experiment = yaml.load(f, Loader=MrfmSimLoader)
-            ctx.obj["experiment"] = experiment
-        elif expt:
-            experiment_module = sys.modules["mrfmsim.experiment"]
-            ctx.obj["experiment"] = getattr(experiment_module, expt)
+    @click.option("--name", "-n", type=str, help="experiment name")
+    @click.option(
+        "--file",
+        "-f",
+        type=click.Path(exists=True),
+        help="load experiment/collection by file path",
+    )
+    @click.option("--collection", "-c", type=str, help="load experiment collection")
+    @wraps(command_func)
+    def wrapper(name, file, collection, **kwargs):
+        if not any([name, file]):
+            raise click.UsageError("missing option '--name' or '--file'")
+
+        if file:
+            with open(file, "r") as f:
+                obj = yaml.load(f, Loader=MrfmSimLoader)
+            if isinstance(obj, Experiment):
+                experiment = obj
+            elif isinstance(obj, ExperimentCollection):
+                if not name:
+                    raise click.UsageError("collection missing option '--name'")
+                experiment = obj[name]
+            else:
+                raise click.UsageError("invalid experiment file")
+        elif collection:
+            experiment = getattr(experiment_module, collection)[name]
+        else:
+            experiment = getattr(experiment_module, name)
+
+        return command_func(experiment=experiment, **kwargs)
+
+    return wrapper
 
 
-@cli.command()
-@click.pass_context
+@click.group(help="MRFM simulation tool", name="mrfmsim")
+def cli():
+    """Main function for the CLI."""
+    pass
+
+
+@cli.command(help="view the experiment graph")
+@load_experiment
 @click.option("--view/--no-view", is_flag=True, default=True)
-def visualize(ctx, view):
+def visualize(experiment, view):
     """Draw experiment graph."""
-    dot_graph = ctx.obj["experiment"].visualize()
+    dot_graph = experiment.visualize()
     dot_graph.render(view=view)
 
 
-@cli.command()
-@click.pass_context
-def metadata(ctx):
+@cli.command(help="show the experiment metadata")
+@load_experiment
+def metadata(experiment):
     """Show experiment metadata."""
-    expt_obj = str(ctx.obj["experiment"])
-    click.echo(expt_obj)
+    click.echo(str(experiment))
 
 
-@cli.command()
-@click.pass_context
-def template(ctx):
+@cli.command(help="create a experiment template job file")
+@load_experiment
+def template(experiment):
     """Create a template job file based on the experiment."""
-    experiment = ctx.obj["experiment"]
     job_template = [Job("", {k: None for k in experiment.__signature__.parameters}, [])]
     click.echo(yaml.dump(job_template, Dumper=TemplateDumper, sort_keys=False))
 
 
-@cli.command()
-@click.pass_context
-@click.option("--job", help="The job file path.")
-def execute(ctx, job):
+@cli.command(help="run the job file, use '--job' for the job file path")
+@load_experiment
+@click.option("--job", help="the job file path")
+def run(experiment, job):
     """Execute the job file, use --job for the job file path."""
-    experiment = ctx.obj["experiment"]
 
     with open(job, "r") as f:
         jobs = yaml.load(f, Loader=MrfmSimLoader)
 
-    for job in jobs:
+    for j in jobs:
         # return the result to the console
-        click.echo(job_execution(experiment, job))
+        click.echo(job_execution(experiment, j))
 
 
-@cli.command()
+@cli.command(help="list all available mrfmsim plugins")
 def plugins():
     """List all available plugins."""
 

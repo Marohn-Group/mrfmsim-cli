@@ -1,6 +1,7 @@
 import yaml
 from mrfmsim_cli.job import Job
 
+
 def yaml_dumper(representer_dict):
     """Create a yaml dumper with custom representers.
 
@@ -9,7 +10,7 @@ def yaml_dumper(representer_dict):
     """
 
     class Dumper(yaml.SafeDumper):
-        pass 
+        pass
 
     for key, value in representer_dict.items():
         Dumper.add_representer(key, value)

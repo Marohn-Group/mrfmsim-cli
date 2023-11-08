@@ -5,6 +5,8 @@ import os
 from textwrap import dedent
 from unittest.mock import patch
 import types
+import mrfmsim.experiment as experiment_module
+import mrfmsim as mrfmsim_module
 
 
 @pytest.fixture
@@ -34,27 +36,25 @@ def test_cli_help():
     """Test the help command executes the job correctly."""
 
     help_str = """\
-    Usage: cli [OPTIONS] COMMAND [ARGS]...
+    Usage: mrfmsim [OPTIONS] COMMAND [ARGS]...
 
-      MRFM simulation tool.
+      MRFM simulation tool
 
     Options:
-      --expt-file PATH  Load experiment by file path.
-      --expt TEXT       Load experiment by name.
-      --help            Show this message and exit.
+      --help  Show this message and exit.
 
     Commands:
-      execute    Execute the job file, use --job for the job file path.
-      metadata   Show experiment metadata.
-      plugins    List all available plugins.
-      template   Create a template job file based on the experiment.
-      visualize  Draw experiment graph.
+      metadata   show the experiment metadata
+      plugins    list all available mrfmsim plugins
+      run        run the job file, use '--job' for the job file path
+      template   create a experiment template job file
+      visualize  view the experiment graph
     """
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
 
     assert result.exit_code == 0
-    assert dedent(help_str) == result.output
+    assert result.output == dedent(help_str)
 
 
 def test_cli_help_command():
@@ -64,29 +64,69 @@ def test_cli_help_command():
     result = runner.invoke(cli, [])
 
     assert result.exit_code == 0
-    assert "Usage: cli [OPTIONS] COMMAND [ARGS]..." in result.output
+    assert "Usage: mrfmsim [OPTIONS] COMMAND [ARGS]..." in result.output
 
 
-def test_cli_option_raises_error(expt_file):
-    """Test the command line raises an error if both exp-file and exp are given."""
-
-    runner = CliRunner()
-    result = runner.invoke(
-        cli, ["--expt-file", str(expt_file), "--expt", "test", "metadata"]
-    )
-
-    assert result.exit_code == 2
-    assert "cannot use both 'expt-file' and 'expt' options" in result.output
-
-
-def test_cli_no_command_error(expt_file):
-    """Test the command line raises an error if no command is given."""
+def test_exp_missing_name_file_exception():
+    """Test the load_experiment raise exception if the name and file are missing."""
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["--expt-file", str(expt_file)])
+    result = runner.invoke(cli, ["metadata"])
 
     assert result.exit_code == 2
-    assert "No commands are given." in result.output
+    assert "missing option '--name' or '--file'" in result.output
+
+
+def test_file_missing_name_collection(collection_file):
+    """Test exception if the file is a collection but no name."""
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["metadata", "-f", collection_file])
+
+    assert result.exit_code == 2
+    assert "collection missing option '--name'" in result.output
+
+
+def test_invalid_file(tmp_path):
+    """Test exception if the file is a collection but no name."""
+
+    yaml_str = ""
+    file_path = tmp_path / "test.yaml"
+    file_path.write_text(yaml_str)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["metadata", "-f", file_path])
+
+    assert result.exit_code == 2
+    assert "invalid experiment file" in result.output
+
+
+def test_file_collection(collection_file):
+    """Test obtain expt_collection."""
+
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["metadata", "-f", collection_file, "-n", "test1"])
+
+    assert result.exit_code == 0
+    assert "test1" in result.output
+
+
+def test_collection(expt_collection):
+    """Test obtain expt_collection."""
+
+    runner = CliRunner()
+
+    expt_module = types.ModuleType("mrfmsim.experiment")
+    expt_module.test_collection = expt_collection
+
+    with patch("mrfmsim_cli.cli.experiment_module", expt_module):
+        result = runner.invoke(
+            cli, ["metadata", "-c", "test_collection", "-n", "test1"]
+        )
+
+    assert result.exit_code == 0
+    assert "test1" in result.output
 
 
 def test_cli_visualize(expt_file):
@@ -142,9 +182,7 @@ def test_cli_visualize(expt_file):
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(
-            cli, ["--expt-file", str(expt_file), "visualize", "--no-view"]
-        )
+        result = runner.invoke(cli, ["visualize", "-f", str(expt_file), "--no-view"])
         assert result.exit_code == 0
         assert result.output == ""  # output to the console
 
@@ -176,13 +214,13 @@ def test_cli_template(expt_file):
     """
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["--expt-file", str(expt_file), "template"])
+    result = runner.invoke(cli, ["template", "-f", str(expt_file)])
 
     assert result.exit_code == 0
     assert result.output == dedent(job_template)
 
 
-def test_cli_expt_execute(experiment_mod, job_file):
+def test_cli_expt_execute(experiment_mod, job_file, mocker):
     """Test the experiment option works correctly.
 
     Here a mock module is created to create the test_experiment object.
@@ -190,13 +228,13 @@ def test_cli_expt_execute(experiment_mod, job_file):
 
     runner = CliRunner()
 
-    child_module = types.ModuleType("mrfmsim.experiment")
-    child_module.test_experiment = experiment_mod
+    expt_module = types.ModuleType("mrfmsim.experiment")
+    expt_module.test_experiment = experiment_mod
 
-    with patch.dict("sys.modules", {"mrfmsim.experiment": child_module}):
+    with patch("mrfmsim_cli.cli.experiment_module", expt_module):
         result = runner.invoke(
             cli,
-            ["--expt", "test_experiment", "execute", "--job", str(job_file)],
+            ["run", "-n", "test_experiment", "--job", str(job_file)],
             catch_exceptions=False,
         )
 
@@ -210,9 +248,7 @@ def test_cli_expt_file_execute(expt_file, job_file):
     """Test the execute command executes the job correctly."""
 
     runner = CliRunner()
-    result = runner.invoke(
-        cli, ["--expt-file", str(expt_file), "execute", "--job", str(job_file)]
-    )
+    result = runner.invoke(cli, ["run", "-f", str(expt_file), "--job", str(job_file)])
 
     assert result.exit_code == 0
     assert result.output.strip() == "[(0.0, 1.0), (-2.0, 1.0)]"  # echo to console
@@ -226,11 +262,15 @@ def test_cli_metadata(experiment_mod):
 
     runner = CliRunner()
 
-    child_module = types.ModuleType("mrfmsim.experiment")
-    child_module.test_experiment = experiment_mod
+    # patch the experiment module so that the test does not depend on
+    # the experiment plugins
+    # here the key is to patch the module in the cli script
 
-    with patch.dict("sys.modules", {"mrfmsim.experiment": child_module}):
-        result = runner.invoke(cli, ["--expt", "test_experiment", "metadata"])
+    expt_module = types.ModuleType("mrfmsim.experiment")
+    expt_module.test_experiment = experiment_mod
+
+    with patch("mrfmsim_cli.cli.experiment_module", expt_module):
+        result = runner.invoke(cli, ["metadata", "-n", "test_experiment"])
 
     assert result.exit_code == 0
     assert str(experiment_mod) in result.output

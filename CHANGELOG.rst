@@ -17,3 +17,4 @@ Added
 
 - Add Job class and job functionalities.
 - Add 'visualize', 'metadata', 'template', 'execute' and 'plugin' commands.
+- Commands can act on both experiments and collections.
