@@ -35,7 +35,17 @@ test = ["pytest", "pytest-cov"]
 job = "mrfmsim_cli.job"
 
 [tool.pytest.ini_options]
-filterwarnings = []
+filterwarnings = [
+    # note the use of single quote below to denote "raw" strings in TOML
+    # the escape sequence is necessary in graphviz dot string
+    # used to left align node text
+    'ignore:invalid escape sequence \\l:DeprecationWarning',
+    # The parallel method of numba might not be used in test
+    # ignore the warning
+    'ignore::numba.NumbaPerformanceWarning',
+    # the plot plugin's mayavi package has a deprecation warning
+    'ignore::DeprecationWarning',
+]
 
 [tool.coverage.run]
 # pytest coverage
