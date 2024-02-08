@@ -1,7 +1,10 @@
 mrfmsim-cli
 ======================
 
-``mrfmsim-cli`` provides quick command line actions for the mrfmsim packaegs.
+The *mrfmsim-cli* package is part of the 
+`mrfmsim project <https://marohn-group.github.io/mrfmsim-docs/>`__. 
+The package is loaded as a plugin and provides quick command-line actions
+for the *mrfmsim* packages.
 
 
 To see the commands and options::
