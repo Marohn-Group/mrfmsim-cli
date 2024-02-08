@@ -129,7 +129,7 @@ def collection_yaml():
     return """\
     !Collection
     name: test_collection
-    description: Test collection object.
+    doc: Test collection object.
     node_objects:
         add:
             func: !func:add "lambda a, h: a + h"
