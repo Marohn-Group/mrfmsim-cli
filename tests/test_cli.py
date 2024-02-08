@@ -5,8 +5,6 @@ import os
 from textwrap import dedent
 from unittest.mock import patch
 import types
-import mrfmsim.experiment as experiment_module
-import mrfmsim as mrfmsim_module
 
 
 @pytest.fixture

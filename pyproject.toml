@@ -16,6 +16,7 @@ mrfmsim = { git = "https://github.com/marohn-group/mrfmsim", branch="develop" }
 click = ">=8"
 pytest = { version = ">=7.1.1", optional = true }
 pytest-cov = { version = ">=3.0.0", optional = true }
+pytest-mock = { version = ">=3.12.0", optional = true }
 
 [tool.poetry.scripts]
 mrfmsim = 'mrfmsim_cli.cli:cli'
@@ -27,6 +28,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.dev-dependencies]
 pytest = ">=7.1.1"
 pytest-cov = ">=3.0.0"
+pytest-mock = ">=3.12.0"
 
 [tool.poetry.extras]
 test = ["pytest", "pytest-cov"]
@@ -53,3 +55,48 @@ source_pkgs = [
     'mrfmsim_cli',
 ]
 omit = ['tests/*']
+
+[tool.tox]
+# for testing different python environments
+legacy_tox_ini = """
+[tox]
+envlist = py310, py311, py312, coverage
+isolated_build = True
+ 
+[testenv:py310]
+deps = 
+    pytest >= 7.1.1
+    pytest-mock >= 3.12.0
+commands = 
+    pytest
+
+[testenv:py311]
+deps = 
+    pytest >= 7.1.1
+    pytest-mock >= 3.12.0
+commands = 
+    pytest
+
+[testenv:py312]
+deps = 
+    pytest >= 7.1.1
+    pytest-mock >= 3.12.0
+commands = 
+    pytest
+
+[testenv:coverage]
+deps = 
+    pytest >= 7.1.1
+    pytest-mock >= 3.12.0
+    pytest-cov >= 3.0.0
+commands =
+    coverage run --source=tests -m pytest
+    coverage html
+    coverage report
+
+[gh-actions]
+python =
+    3.10: py310, coverage, docs
+    3.11: py311, coverage, docs
+    3.12: py311, coverage, docs
+"""
