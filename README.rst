@@ -12,8 +12,6 @@ To list all available plugins::
 
     mrfmsim plugins
 
-Specifically, the interface takes two stages, first to load the experiment,
-and then execute related commands.
 
 Execute Command
 ^^^^^^^^^^^^^^^
