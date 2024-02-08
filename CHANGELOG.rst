@@ -7,7 +7,7 @@ The format is based on
 and this project adheres to
 `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
-[Unreleased]
+[0.1.0]
 ------------
 
 Initiate the project.
@@ -16,5 +16,5 @@ Added
 ~~~~~
 
 - Add Job class and job functionalities.
-- Add 'visualize', 'metadata', 'template', 'execute' and 'plugin' commands.
+- Add "visualize", "metadata", "template", "execute", and "plugin" commands.
 - Commands can act on both experiments and collections.
