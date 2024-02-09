@@ -38,14 +38,6 @@ job = "mrfmsim_cli.job"
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    # note the use of single quote below to denote "raw" strings in TOML
-    # the escape sequence is necessary in graphviz dot string
-    # used to left align node text
-    'ignore:invalid escape sequence \\l:DeprecationWarning',
-    # The parallel method of numba might not be used in test
-    # ignore the warning
-    'ignore::numba.NumbaPerformanceWarning',
-    # the plot plugin's mayavi package has a deprecation warning
     'ignore::DeprecationWarning',
 ]
 
@@ -96,7 +88,7 @@ commands =
 
 [gh-actions]
 python =
-    3.10: py310, coverage, docs
-    3.11: py311, coverage, docs
-    3.12: py311, coverage, docs
+    3.10: py310, coverage
+    3.11: py311, coverage
+    3.12: py311, coverage
 """
