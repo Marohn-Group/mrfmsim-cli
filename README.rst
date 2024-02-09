@@ -1,7 +1,7 @@
 mrfmsim-cli
 ======================
 
-The *mrfmsim-cli* package is part of the 
+The *mrfmsim-cli* package is a part of the 
 `mrfmsim project <https://marohn-group.github.io/mrfmsim-docs/>`__. 
 The package is loaded as a plugin and provides quick command-line actions
 for the *mrfmsim* packages.
