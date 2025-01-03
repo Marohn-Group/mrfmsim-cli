@@ -1,46 +1,42 @@
 import click
-from mrfmsim.configuration import MrfmSimLoader
-from mrfmsim_cli.job import Job, job_execution
-from mrfmsim_cli.configuration import TemplateDumper
-from mrfmsim import Experiment, ExperimentCollection, PLUGINS
-import mrfmsim.experiment as experiment_module
-import yaml
+from mrfmsim_cli.job import job_execution
 from functools import wraps
+import importlib
 
 
 def load_experiment(command_func):
-    """Load experiment from file or collection as a common option decorator."""
+    """Load experiment or experiment group."""
 
-    @click.option("--name", "-n", type=str, help="experiment name")
+    @click.option("--expt", "-e", type=str, help="load an experiment")
+    @click.option("--group", "-g", type=str, help="load a experiment group")
     @click.option(
-        "--file",
-        "-f",
-        type=click.Path(exists=True),
-        help="load experiment/collection by file path",
+        "--module",
+        "-m",
+        type=str,
+        help="experiment module, defaults to mrfmsim.experiment",
     )
-    @click.option("--collection", "-c", type=str, help="load experiment collection")
     @wraps(command_func)
-    def wrapper(name, file, collection, **kwargs):
-        if not any([name, file]):
-            raise click.UsageError("missing option '--name' or '--file'")
+    def wrapper(expt, group, module, **kwargs):
 
-        if file:
-            with open(file, "r") as f:
-                obj = yaml.load(f, Loader=MrfmSimLoader)
-            if isinstance(obj, Experiment):
-                experiment = obj
-            elif isinstance(obj, ExperimentCollection):
-                if not name:
-                    raise click.UsageError("collection missing option '--name'")
-                experiment = obj[name]
+        if not expt and not group:
+            raise click.UsageError("experiment or experiment group not defined")
+        module = module or "mrfmsim.experiment"
+        expt_module = importlib.import_module(module)
+
+        if group:
+            experiment_group = getattr(expt_module, group)
+            if expt:
+                experiment = experiment_group.experiments[expt]
             else:
-                raise click.UsageError("invalid experiment file")
-        elif collection:
-            experiment = getattr(experiment_module, collection)[name]
-        else:
-            experiment = getattr(experiment_module, name)
+                experiment = None
 
-        return command_func(experiment=experiment, **kwargs)
+        else:
+            experiment = getattr(expt_module, expt)
+            experiment_group = None
+
+        return command_func(
+            experiment=experiment, experiment_group=experiment_group, **kwargs
+        )
 
     return wrapper
 
@@ -54,50 +50,36 @@ def cli():
 @cli.command(help="view the experiment graph")
 @load_experiment
 @click.option("--view/--no-view", is_flag=True, default=True)
-def visualize(experiment, view):
+def visualize(experiment, experiment_group, view):
     """Draw experiment graph."""
+    if not experiment:
+        raise click.UsageError("experiment not defined")
     dot_graph = experiment.visualize()
     dot_graph.render(view=view)
 
 
 @cli.command(help="show the experiment metadata")
 @load_experiment
-def metadata(experiment):
+def metadata(experiment, experiment_group):
     """Show experiment metadata."""
-    click.echo(str(experiment))
 
-
-@cli.command(help="create a experiment template job file")
-@load_experiment
-def template(experiment):
-    """Create a template job file based on the experiment."""
-    job_template = [Job("", {k: None for k in experiment.__signature__.parameters}, [])]
-    click.echo(yaml.dump(job_template, Dumper=TemplateDumper, sort_keys=False))
-
+    if experiment:
+        click.echo(str(experiment))
+    else:
+        click.echo(str(experiment_group))
 
 @cli.command(help="run the job file, use '--job' for the job file path")
 @load_experiment
-@click.option("--job", help="the job file path")
-def run(experiment, job):
+@click.option("--job", "-j", help="the job file path")
+def run(experiment, experiment_group, job):
     """Execute the job file, use --job for the job file path."""
-
-    with open(job, "r") as f:
-        jobs = yaml.load(f, Loader=MrfmSimLoader)
+    if not experiment:
+        raise click.UsageError("experiment not defined")
+    spec = importlib.util.spec_from_file_location("job_file", job)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    jobs = module.jobs
 
     for j in jobs:
         # return the result to the console
         click.echo(job_execution(experiment, j))
-
-
-@cli.command(help="list all available mrfmsim plugins")
-def plugins():
-    """List all available plugins."""
-
-    for plugin, eps in PLUGINS.items():
-        click.echo(plugin)
-        for ep_dict in eps:
-            for key, val in ep_dict.items():
-                if key == "module":
-                    click.echo(f"\t{key}: {val.__name__}")
-                else:
-                    click.echo(f"\t{key}: {val}")

@@ -1,6 +1,3 @@
-__mrfmsim_plugin__ = ["Job"]
-
-
 class Job:
     """Create Experiment execution job.
 
@@ -9,9 +6,9 @@ class Job:
     :param list shortcuts: additional shortcut modification of the model
     """
 
-    def __init__(self, name, inputs, shortcuts: list = []):
+    def __init__(self, name, inputs, shortcuts=None):
         self.name = name
-        self.shortcuts = shortcuts
+        self.shortcuts = shortcuts or []
         self.inputs = inputs
 
 

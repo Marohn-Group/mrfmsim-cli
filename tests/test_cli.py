@@ -1,33 +1,9 @@
 from click.testing import CliRunner
 from mrfmsim_cli.cli import cli
-import pytest
 import os
 from textwrap import dedent
-from unittest.mock import patch
 import types
-
-
-@pytest.fixture
-def job_file(tmp_path):
-    """Create a job yaml file."""
-
-    job_yaml = """\
-    - !import:mrfmsim_cli.job.Job
-      name: test
-      inputs:
-        comp:
-          !import:types.SimpleNamespace
-          a1: 0
-          b1: 2
-        d_loop: [2, 3]
-        f: 1
-        h: 2
-      shortcuts: []
-    """
-
-    module_path = tmp_path / "job.yaml"
-    module_path.write_text(dedent(job_yaml))
-    return module_path
+import sys
 
 
 def test_cli_help():
@@ -43,9 +19,7 @@ def test_cli_help():
 
     Commands:
       metadata   show the experiment metadata
-      plugins    list all available mrfmsim plugins
       run        run the job file, use '--job' for the job file path
-      template   create a experiment template job file
       visualize  view the experiment graph
     """
     runner = CliRunner()
@@ -65,69 +39,51 @@ def test_cli_help_command():
     assert "Usage: mrfmsim [OPTIONS] COMMAND [ARGS]..." in result.output
 
 
-def test_exp_missing_name_file_exception():
+def test_exp_missing_name_exception():
     """Test the load_experiment raise exception if the name and file are missing."""
 
     runner = CliRunner()
     result = runner.invoke(cli, ["metadata"])
 
     assert result.exit_code == 2
-    assert "missing option '--name' or '--file'" in result.output
+    assert "experiment or experiment group not defined" in result.output
 
 
-def test_file_missing_name_collection(collection_file):
-    """Test exception if the file is a collection but no name."""
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["metadata", "-f", collection_file])
-
-    assert result.exit_code == 2
-    assert "collection missing option '--name'" in result.output
-
-
-def test_invalid_file(tmp_path):
-    """Test exception if the file is a collection but no name."""
-
-    yaml_str = ""
-    file_path = tmp_path / "test.yaml"
-    file_path.write_text(yaml_str)
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["metadata", "-f", file_path])
-
-    assert result.exit_code == 2
-    assert "invalid experiment file" in result.output
-
-
-def test_file_collection(collection_file):
-    """Test obtain expt_collection."""
+def test_experiment_group(experiment_group):
+    """Test obtain experiment_group."""
 
     runner = CliRunner()
 
-    result = runner.invoke(cli, ["metadata", "-f", collection_file, "-n", "test1"])
+    expt_module = types.ModuleType("mock_module")
+    sys.modules["mock_module"] = expt_module
+    expt_module.test_collection = experiment_group
+
+    result = runner.invoke(
+        cli, ["metadata", "-m", "mock_module", "-g", "test_collection", "-e", "recipe1"]
+    )
 
     assert result.exit_code == 0
-    assert "test1" in result.output
+    assert "recipe1" in result.output
 
 
-def test_collection(expt_collection):
-    """Test obtain expt_collection."""
+def test_experiment_group_metadata(experiment_group):
+    """Test experiment_group can display metadata without specify experiment name."""
 
     runner = CliRunner()
 
-    expt_module = types.ModuleType("mrfmsim.experiment")
-    expt_module.test_collection = expt_collection
+    expt_module = types.ModuleType("mock_module")
+    sys.modules["mock_module"] = expt_module
+    expt_module.test_collection = experiment_group
 
-    with patch("mrfmsim_cli.cli.experiment_module", expt_module):
-        result = runner.invoke(
-            cli, ["metadata", "-c", "test_collection", "-n", "test1"]
-        )
+    result = runner.invoke(
+        cli, ["metadata", "-m", "mock_module", "-g", "test_collection"]
+    )
 
     assert result.exit_code == 0
-    assert "test1" in result.output
+    assert "experiments: ['recipe1', 'recipe2']" in result.output
 
 
-def test_cli_visualize(expt_file):
+def test_cli_visualize(experiment_mod):
     """Test the visualize command outputs the correct dot file.
 
     The render to the browser is turned off.
@@ -140,16 +96,16 @@ def test_cli_visualize(expt_file):
     graph: test_graph
     handler: MemHandler
     modifiers:
-    - loop_input('d')
+    - loop_input(parameter='d')
     components:
-    - comp: [['a', 'a1'], ['b', 'b1']]
+    - comp: [('a', 'a1'), ('b', 'b1')]
     Test experiment with components." 
     labeljust=l labelloc=t ordering=out splines=ortho]
     node [shape=box]
     add [label="add
     add(a, h)
     return: c
-    functype: function
+    functype: numpy.ufunc
     Add a and h."]
     subtract [label="subtract
     sub(c, d)
@@ -180,7 +136,15 @@ def test_cli_visualize(expt_file):
 
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["visualize", "-f", str(expt_file), "--no-view"])
+
+        expt_module = types.ModuleType("mock_module")
+        sys.modules["mock_module"] = expt_module
+        expt_module.test_experiment = experiment_mod
+
+        result = runner.invoke(
+            cli,
+            ["visualize", "-m", "mock_module", "-e", "test_experiment", "--no-view"],
+        )
         assert result.exit_code == 0
         assert result.output == ""  # output to the console
 
@@ -196,29 +160,27 @@ def test_cli_visualize(expt_file):
         assert os.path.exists("test_graph.gv.pdf")
 
 
-def test_cli_template(expt_file):
-    """Test the template command outputs the value correctly."""
-
-    job_template = """\
-    - !import:mrfmsim.Job
-      name: ''
-      inputs:
-        comp: null
-        d_loop: null
-        f: null
-        h: null
-      shortcuts: []
-
-    """
+def test_cli_exception(experiment_group):
+    """Test the visualize exception when only the group is given."""
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["template", "-f", str(expt_file)])
 
-    assert result.exit_code == 0
-    assert result.output == dedent(job_template)
+    expt_module = types.ModuleType("mock_module")
+    sys.modules["mock_module"] = expt_module
+    expt_module.test_collection = experiment_group
+
+    result = runner.invoke(
+        cli, ["visualize", "-m", "mock_module", "-g", "test_collection"]
+    )
+    assert result.exit_code == 2
+    assert "experiment not defined" in result.output
+
+    result = runner.invoke(cli, ["run", "-m", "mock_module", "-g", "test_collection"])
+    assert result.exit_code == 2
+    assert "experiment not defined" in result.output
 
 
-def test_cli_expt_execute(experiment_mod, job_file, mocker):
+def test_cli_expt_run(experiment_mod, job_file):
     """Test the experiment option works correctly.
 
     Here a mock module is created to create the test_experiment object.
@@ -226,58 +188,26 @@ def test_cli_expt_execute(experiment_mod, job_file, mocker):
 
     runner = CliRunner()
 
-    expt_module = types.ModuleType("mrfmsim.experiment")
+    expt_module = types.ModuleType("mock_module")
+    sys.modules["mock_module"] = expt_module
     expt_module.test_experiment = experiment_mod
 
-    with patch("mrfmsim_cli.cli.experiment_module", expt_module):
-        result = runner.invoke(
-            cli,
-            ["run", "-n", "test_experiment", "--job", str(job_file)],
-            catch_exceptions=False,
-        )
+    result = runner.invoke(
+        cli,
+        [
+            "run",
+            "-m",
+            "mock_module",
+            "-e",
+            "test_experiment",
+            "--job",
+            str(job_file),
+        ],
+        catch_exceptions=False,
+    )
 
     assert result.exit_code == 0
     assert (
-        result.output.split("\n")[-2] == "[(0.0, 1.0), (-2.0, 1.0)]"
+        result.output.split("\n")[-2]
+        == "[(np.float64(0.0), 1.0), (np.float64(-2.0), 1.0)]"
     )  # echo to console
-
-
-def test_cli_expt_file_execute(expt_file, job_file):
-    """Test the execute command executes the job correctly."""
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["run", "-f", str(expt_file), "--job", str(job_file)])
-
-    assert result.exit_code == 0
-    assert result.output.strip() == "[(0.0, 1.0), (-2.0, 1.0)]"  # echo to console
-
-
-def test_cli_metadata(experiment_mod):
-    """Test the metadata command has the correct output.
-
-    Here a mock module is created to create the test_experiment object.
-    """
-
-    runner = CliRunner()
-
-    # patch the experiment module so that the test does not depend on
-    # the experiment plugins
-    # here the key is to patch the module in the cli script
-
-    expt_module = types.ModuleType("mrfmsim.experiment")
-    expt_module.test_experiment = experiment_mod
-
-    with patch("mrfmsim_cli.cli.experiment_module", expt_module):
-        result = runner.invoke(cli, ["metadata", "-n", "test_experiment"])
-
-    assert result.exit_code == 0
-    assert str(experiment_mod) in result.output
-
-
-def test_cli_show_plugin():
-    """Test the show-plugin command."""
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["plugins"], catch_exceptions=False)
-
-    assert result.exit_code == 0
