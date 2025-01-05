@@ -50,7 +50,7 @@ def modelgraph(node_edges):
 @pytest.fixture
 def experiment(modelgraph):
     """Test experiment instance with default settings."""
-    return Experiment("test_experiment_plain", modelgraph, defaults={"h": 2})
+    return Experiment("test_experiment_plain", modelgraph, param_defaults={"h": 2})
 
 
 @pytest.fixture
@@ -60,10 +60,10 @@ def experiment_mod(modelgraph):
     return Experiment(
         "test_experiment",
         modelgraph,
-        components={"comp": [("a", "a1"), ("b", "b1")]},
+        components={"comp": ["a", "b"]},
         modifiers=[loop_input(parameter="d")],
         doc="Test experiment with components.",
-        defaults={"h": 2},
+        param_defaults={"h": 2},
     )
 
 
@@ -82,11 +82,11 @@ def experiment_group(node_edges):
     experiment_recipes = {
         "recipe1": {
             "grouped_edges": grouped_edges,
-            "defaults": {"h": 2},
+            "param_defaults": {"h": 2},
         },
         "recipe2": {
             "grouped_edges": grouped_edges,
-            "defaults": {"h": 3},
+            "param_defaults": {"h": 3},
         },
     }
 
@@ -107,7 +107,7 @@ def job_file(tmp_path):
     from mrfmsim_cli.job import Job
     from types import SimpleNamespace
 
-    comp = SimpleNamespace(a1=0, b1=2)
+    comp = SimpleNamespace(a=0, b=2)
     job1 = Job(name="job1", inputs={'comp':comp, 'd_loop':[2, 3], 'f':1, 'h':2})
 
     jobs = [job1]

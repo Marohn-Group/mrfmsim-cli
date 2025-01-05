@@ -97,8 +97,6 @@ def test_cli_visualize(experiment_mod):
     handler: MemHandler
     modifiers:
     - loop_input(parameter='d')
-    components:
-    - comp: [('a', 'a1'), ('b', 'b1')]
     Test experiment with components." 
     labeljust=l labelloc=t ordering=out splines=ortho]
     node [shape=box]

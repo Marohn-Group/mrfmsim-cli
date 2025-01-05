@@ -1,5 +1,5 @@
 from mrfmsim_cli.job import Job, job_execution
-from mrfmsim.shortcut import loop_shortcut
+from mmodel.shortcut import loop_shortcut
 
 
 def test_job_execution(experiment):
