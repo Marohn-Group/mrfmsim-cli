@@ -41,10 +41,12 @@ def load_experiment(command_func):
     return wrapper
 
 
-@click.group(help="MRFM simulation tool", name="mrfmsim")
-def cli():
+@click.group(help="MRFM simulation tool", name="mrfmsim", invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
     """Main function for the CLI."""
-    pass
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @cli.command(help="view the experiment graph")

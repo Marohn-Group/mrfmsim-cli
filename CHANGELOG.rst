@@ -7,6 +7,12 @@ The format is based on
 and this project adheres to
 `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
+
+[0.1.1]
+------------
+
+- Update to Graph.add_node_objects_from based on mmodel 0.9.0.
+
 [0.1.0]
 ------------
 

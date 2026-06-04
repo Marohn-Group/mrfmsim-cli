@@ -42,7 +42,7 @@ def modelgraph(node_edges):
 
     G = Graph(name="test_graph")
     G.add_grouped_edges_from(grouped_edges)
-    G.set_node_objects_from(node_objects)
+    G.add_node_objects_from(node_objects)
 
     return G
 
